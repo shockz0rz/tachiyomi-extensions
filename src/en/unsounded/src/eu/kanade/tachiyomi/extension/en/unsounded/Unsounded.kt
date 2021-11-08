@@ -139,7 +139,7 @@ class Unsounded : HttpSource() {
             retList.add(
                 SChapter.create().apply {
                     chapter_number = chapNum.toFloat()
-                    url = "ArchiveChap"
+                    url = "ArchiveChap${getFormattedChapterNum(chapNum)}"
                     name = getChapterTitle(chapNum)
                     date_upload = System.currentTimeMillis()
                 }
