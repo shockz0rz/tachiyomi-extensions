@@ -170,7 +170,9 @@ class Unsounded : HttpSource() {
     }
 
     private fun getPageCountFromChapterBox(chapNum: Int): Int {
-        val chapData = getChapterList()[ chapNum - 1 ]
+        val chapList = getChapterList()
+        val index = chapList.size - chapNum
+        val chapData = chapList[ index ]
         return chapData.getElementsByAttributeValueMatching("href", """.*comic/ch\d\d/ch\d\d_\d\d.html""").size
     }
 
@@ -179,38 +181,40 @@ class Unsounded : HttpSource() {
         if (!this::indexDoc.isInitialized) {
             indexDoc = client.newCall(popularMangaRequest(1)).execute().asJsoup()
         }
-        when (chapter.url) {
-            "ArchiveChap" -> {
-                val retList = mutableListOf<Page>()
-                for (pageI in 0..getPageCountFromChapterBox(chapNum)) {
-                    retList.add(
-                        Page(
-                            pageI, "ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageI)}",
-                            getImageUrl(chapNum, pageI), null
+        with(chapter.url) {
+            when {
+                startsWith("ArchiveChap") -> {
+                    val retList = mutableListOf<Page>()
+                    for (pageI in 0 until getPageCountFromChapterBox(chapNum)) {
+                        retList.add(
+                            Page(
+                                pageI, "ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageI + 1)}",
+                                getImageUrl(chapNum, pageI), null
+                            )
                         )
-                    )
+                    }
+                    return Observable.just(retList)
                 }
-                return Observable.just(retList)
-            }
-            "LatestChap" -> {
-                return Observable.just(
-                    listOf(
-                        Page(
-                            0, "ch${getFormattedChapterNum(getChapterList().size)}_${getFormattedChapterNum(chapNum)}",
-                            getImageUrl(getChapterList().size, chapNum), null
+                startsWith("LatestChap") -> {
+                    return Observable.just(
+                        listOf(
+                            Page(
+                                0, "ch${getFormattedChapterNum(getChapterList().size)}_${getFormattedChapterNum(chapNum)}",
+                                getImageUrl(getChapterList().size, chapNum), null
+                            )
                         )
                     )
-                )
-                // now say that five times fast
-            }
-            else -> {
-                return Observable.just(emptyList())
+                    // now say that five times fast
+                }
+                else -> {
+                    return Observable.just(emptyList())
+                }
             }
         }
     }
 
     private fun getImageUrl(chapNum: Int, pageNum: Int): String {
-        return "$baseUrl/ch${getFormattedChapterNum(chapNum)}/pageart/ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageNum)}.jpg"
+        return "$baseUrl/comic/ch${getFormattedChapterNum(chapNum)}/pageart/ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageNum + 1)}.jpg"
     }
 
     override fun imageUrlParse(response: Response): String = throw Exception("Not used")
