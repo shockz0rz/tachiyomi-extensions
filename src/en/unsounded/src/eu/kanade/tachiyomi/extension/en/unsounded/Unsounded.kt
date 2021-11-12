@@ -156,10 +156,10 @@ class Unsounded : HttpSource() {
     private fun latestChapterListParse(): List<SChapter> {
         val pageCount = getPageCountFromChapterBox(getChapterList().size)
         val retList = mutableListOf<SChapter>()
-        for (pageI in 0..pageCount) {
+        for (pageI in 0 until pageCount) {
             retList.add(
                 SChapter.create().apply {
-                    url = "LatestChap"
+                    url = "LatestChapPage${getFormattedChapterNum(pageI + 1) }"
                     name = "Page ${getFormattedChapterNum(pageI + 1) }"
                     date_upload = System.currentTimeMillis()
                     chapter_number = (pageI + 1).toFloat()
