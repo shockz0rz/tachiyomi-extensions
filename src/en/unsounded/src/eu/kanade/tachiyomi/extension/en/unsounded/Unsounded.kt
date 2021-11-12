@@ -120,7 +120,7 @@ class Unsounded : HttpSource() {
         }
         return when (manga.url) {
             "UnsoundedArchive" -> { Observable.just(archiveChapterListParse()) }
-            "UnsoundedLatestChapter" -> { Observable.just(latestChapterListParse()) }
+            "UnsoundedLatest" -> { Observable.just(latestChapterListParse()) }
             else -> { Observable.empty() }
         }
     }
@@ -173,7 +173,7 @@ class Unsounded : HttpSource() {
         val chapList = getChapterList()
         val index = chapList.size - chapNum
         val chapData = chapList[ index ]
-        return chapData.getElementsByAttributeValueMatching("href", """.*comic/ch\d\d/ch\d\d_\d\d.html""").size
+        return chapData.getElementsByAttributeValueMatching("href", """.*comic/ch\d\d/.*.html""").size
     }
 
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
@@ -185,13 +185,67 @@ class Unsounded : HttpSource() {
             when {
                 startsWith("ArchiveChap") -> {
                     val retList = mutableListOf<Page>()
+                    var addedPageNum = 0
                     for (pageI in 0 until getPageCountFromChapterBox(chapNum)) {
+                        // Couple nonstandard set of pages in chapter 7
+                        // TODO: Generalize this + the nonstandard urls in chapter 13?
+                        if (chapNum == 7) {
+                            when (pageI) {
+                                28 -> {
+                                    for (sufStr in listOf("", "b", "c", "d", "e", "f", "g", "h", "i")) {
+                                        retList.add(Page(addedPageNum, "ch07_29$sufStr", getImageUrl(chapNum, 28, sufStr), null))
+                                        addedPageNum++
+                                    }
+                                    continue
+                                }
+                                29 -> {
+                                    for (sufStr in listOf("a", "b")) {
+                                        retList.add(Page(addedPageNum, "ch07_30$sufStr", getImageUrl(chapNum, 29, sufStr), null))
+                                        addedPageNum++
+                                    }
+                                    continue
+                                }
+                            }
+                        }
+                        // Handle that really cool spread in chapter 10
+                        // TODO: Missing header/footer images, doesn't look great in general. Look into image stitching in old flamescans extension.
+                        if (chapNum == 10) {
+                            when (pageI) {
+                                154 -> {
+                                    retList.add(Page(154, "ch10_155156a", "$baseUrl/comic/ch10/images/outside_left_d.jpg", null))
+                                    addedPageNum++
+                                    retList.add(Page(155, "ch10_155156b", "$baseUrl/comic/ch10/images/comic_leftd_bg.jpg", null))
+                                    addedPageNum++
+                                    retList.add(Page(156, "ch10_155156c", getImageUrl(10, 154, "-156"), null))
+                                    addedPageNum++
+                                    continue
+                                }
+                                155 -> {
+                                    retList.add(Page(157, "ch10_155156d", "$baseUrl/comic/ch10/images/comic_rightd_bg.jpg", null))
+                                    addedPageNum++
+                                    retList.add(Page(158, "ch10_155156e", "$baseUrl/comic/ch10/images/outside_right_d.jpg", null))
+                                    addedPageNum++
+                                    continue
+                                }
+                            }
+                        }
+
+                        // Another nonstandard set of pages in chapter 13
+                        if ((chapNum == 13) && (pageI == 85)) {
+                            for (sufStr in listOf("a", "aa", "b", "c", "d")) {
+                                retList.add(Page(addedPageNum, "ch13_86$sufStr", getImageUrl(chapNum, 85, sufStr), null))
+                                addedPageNum++
+                            }
+                            continue
+                        }
+                        // Standard page add
                         retList.add(
                             Page(
-                                pageI, "ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageI + 1)}",
+                                addedPageNum, "ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageI + 1)}",
                                 getImageUrl(chapNum, pageI), null
                             )
                         )
+                        addedPageNum++
                     }
                     return Observable.just(retList)
                 }
@@ -204,7 +258,6 @@ class Unsounded : HttpSource() {
                             )
                         )
                     )
-                    // now say that five times fast
                 }
                 else -> {
                     return Observable.just(emptyList())
@@ -213,8 +266,8 @@ class Unsounded : HttpSource() {
         }
     }
 
-    private fun getImageUrl(chapNum: Int, pageNum: Int): String {
-        return "$baseUrl/comic/ch${getFormattedChapterNum(chapNum)}/pageart/ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageNum + 1)}.jpg"
+    private fun getImageUrl(chapNum: Int, pageNum: Int, suffix: String = ""): String {
+        return "$baseUrl/comic/ch${getFormattedChapterNum(chapNum)}/pageart/ch${getFormattedChapterNum(chapNum)}_${getFormattedChapterNum(pageNum + 1)}$suffix.jpg"
     }
 
     override fun imageUrlParse(response: Response): String = throw Exception("Not used")
